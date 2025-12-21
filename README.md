@@ -17,6 +17,10 @@ A productive IDE (you'll need to build one in it)
 Something with modal editing, or a keybindings system (you'll have
 to add that if you want it)
 
+## Developing
+
+Install `node-devel` for node.js runtime
+
 ## Architecture
 
 https://claude.ai/chat/446db313-769f-4102-be33-a231ff4d2da2

@@ -1,0 +1,6 @@
+# oxmod file specifies the runtime and any details
+# the runtime needs to start the module
+
+runtime native
+lib libinit.so
+
