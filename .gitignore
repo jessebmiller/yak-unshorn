@@ -1,0 +1,36 @@
+# CMake build directory
+build/
+cmake-build-*/
+
+# CMake generated files (if you build in-source, which you shouldn't)
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+
+# Compiled binaries
+*.o
+*.so
+*.a
+*.dylib
+*.dll
+*.exe
+
+# Your specific build artifacts
+ox/main
+ox/ox
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Debug/profiling
+*.dSYM/
+core
+vgcore.*
+*.log
