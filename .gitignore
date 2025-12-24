@@ -2,7 +2,7 @@
 build/
 cmake-build-*/
 
-# CMake generated files (if you build in-source, which you shouldn't)
+# CMake generated files (in case you build in-source, which you shouldn't)
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
