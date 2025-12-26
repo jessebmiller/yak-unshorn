@@ -2,5 +2,5 @@
 # the runtime needs to start the module
 
 runtime native
-lib libinit.so
+lib module/init/libinit.so
 
