@@ -6,12 +6,50 @@
 #define MAX_LINE 256
 #define MAX_VALUE 64
 
-void* start_native_module(char* lib_path) 
+typedef int (*ModuleInit)(void);
+typedef int (*ModuleStart)(void);
+typedef int (*ModuleStop)(void);
+typedef int (*UnloadFunc)(void*);
+
+typedef struct {
+	char* path;
+	ModuleStop stop;
+	void* ctx;
+	UnloadFunc unload; // self.unload(self.ctx)
+} Module;
+
+int unload_module(Module module) {
+	int stop_result = module.stop();
+	if (stop_result != 0) {
+		fprintf(stderr,
+			"Error stopping module %s\n",
+			module.path
+		       );
+	}
+	int unload_result = module.unload(module.ctx);
+	if (unload_result != 0) {
+		fprintf(stderr,
+			"Error unloading module %s\n",
+			module.path
+		       );
+	}
+	if (stop_result !=0 || unload_result != 0) {
+		return 1;
+	}
+
+	return 0;
+}
+
+int unload_native_module(void* handle) {
+	return dlclose(handle);
+}
+
+Module start_native_module(char* lib_path) 
 {
 	void* handle;
-	int (*init)();
-	int (*start)();
-	int (*stop)();
+	ModuleInit init;
+	ModuleStart start;
+	ModuleStop stop;
 	char* error;
 
 	handle = dlopen(lib_path, RTLD_NOW);
@@ -21,7 +59,7 @@ void* start_native_module(char* lib_path)
 			lib_path,
 			dlerror()
 		       );
-		return NULL;
+		return (Module){ 0 };
 	}
 
 	dlerror();
@@ -31,7 +69,7 @@ void* start_native_module(char* lib_path)
 	if (error != NULL) {
 		fprintf(stderr, "Error loading symbol init %s\n", error);
 		dlclose(handle);
-		return NULL;
+		return (Module){0};
 	}
 
 	start = dlsym(handle, "start");
@@ -39,7 +77,7 @@ void* start_native_module(char* lib_path)
 	if (error != NULL) {
 		fprintf(stderr, "Error loading symbol start %s\n", error);
 		dlclose(handle);
-		return NULL;
+		return (Module){0};
 	}
 
 	stop = dlsym(handle, "stop");
@@ -47,30 +85,35 @@ void* start_native_module(char* lib_path)
 	if (error != NULL) {
 		fprintf(stderr, "Error loading symbol stop %s\n", error);
 		dlclose(handle);
-		return NULL;
+		return (Module){0};
 	}
 
 	int code = init();
 	if (code != 0) {
 		fprintf(stderr, "Init failure: %d\n", code);
 		dlclose(handle);
-		return NULL;
+		return (Module){0};
 	}
 
 	code = start();
 	if (code != 0) {
 		fprintf(stderr, "Start failure: %d\n", code);
 		dlclose(handle);
-		return NULL;
+		return (Module){0};
 	}
 
 	fprintf(stderr, "Started native module %s\n", lib_path);
 
-	dlclose(handle);
-	return stop;
+	Module module = {
+		.path = lib_path,
+		.stop = stop,
+		.ctx = handle,
+		.unload = unload_native_module
+	};
+	return module;
 }
 
-void* start_module(const char* mod_path) 
+Module start_module(const char* mod_path) 
 {
 	char* modfile = "oxmod";
 	int path_len = strlen(modfile) + strlen(mod_path) + 2;
@@ -80,7 +123,7 @@ void* start_module(const char* mod_path)
 	FILE* file = fopen(modfile_path, "r");
 	if (!file) {
 		perror("Failed to open modfile");
-		return NULL;
+		return (Module){0};
 	}
 
 	char line[MAX_LINE];
@@ -111,25 +154,25 @@ void* start_module(const char* mod_path)
 		fprintf(stderr, "Missing required config values\n");
 		free(runtime);
 		free(lib);
-		return NULL;
+		return (Module){0};
 	}
 	
 	if (strcmp(runtime, "native") == 0) {
 		free(runtime);
-		int (*stop)() = start_native_module("./build/module/init/libinit.so");
+		Module module = start_native_module("./build/module/init/libinit.so");
 		free(lib);
-		return stop;
+		return module;
 	}
 
 	fprintf(stderr, "Unknown runtime %s\n", runtime);
 
 	free(runtime);
 	free(lib);
-	return NULL;
+	return (Module){0};
 }
 
 // TODO load all modules, not just ./module/init
-void* load_modules() {
+Module load_modules() {
 	// read the config to find the init module
 	const char* OXINIT = getenv("YAK_UNSHORN_OXINIT");
 	if (OXINIT == NULL) {

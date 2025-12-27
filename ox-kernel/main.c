@@ -1,30 +1,24 @@
 #include <SDL3/SDL.h>
 #include <stdbool.h>
 
+#include "main.h"
+
+// TODO make header files for module and event
 #include "module.c"
-
-typedef struct {
-	bool should_exit;
-} Ox;
-
-bool handle_event(Ox* ox, SDL_Event event) {
-	if (event.type == SDL_EVENT_QUIT) {
-		ox->should_exit = 1;
-	} else if (event.type == SDL_EVENT_KEY_DOWN) {
-		ox->should_exit = 1;
-	}
-	return true;
-}
+#include "event.c"
 
 int main() {
 
-	int (*stop_modules)() = load_modules();
+	Module modules = load_modules();
+	if (modules.stop == NULL) {
+		return -1;
+	}
 
 	bool ok = SDL_Init(SDL_INIT_VIDEO);
 	if (!ok) {
 		SDL_Log("Failed to init video");
 		SDL_Quit();
-		stop_modules();
+		unload_module(modules);
 		return -1;
 	}
 	SDL_Log("Video initialized");
@@ -35,7 +29,7 @@ int main() {
 	if (window == NULL) {
 		SDL_Log("NULL Window");
 		SDL_Quit();
-		stop_modules();
+		unload_module(modules);
 		return -1;
 	}
 
@@ -59,5 +53,5 @@ int main() {
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
-	return stop_modules();
+	return unload_module(modules);
 }
