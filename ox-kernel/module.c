@@ -3,12 +3,12 @@
 #include <sys/stat.h>
 #include <dlfcn.h>
 #include <string.h>
-#include <raylib.h>
 
 #define MAX_LINE 256
 #define MAX_VALUE 64
 
-void* start_native_module(char* lib_path) {
+void* start_native_module(char* lib_path) 
+{
 	void* handle;
 	int (*init)();
 	int (*start)();
@@ -68,7 +68,8 @@ void* start_native_module(char* lib_path) {
 	return stop;
 }
 
-void* start_module(const char* mod_path) {
+void* start_module(const char* mod_path) 
+{
 	char* modfile = "oxmod";
 	int path_len = strlen(modfile) + strlen(mod_path) + 2;
 	char modfile_path[path_len];
@@ -114,7 +115,7 @@ void* start_module(const char* mod_path) {
 	
 	if (strcmp(runtime, "native") == 0) {
 		free(runtime);
-		void (*stop)() = start_native_module("./build/module/init/libinit.so");
+		int (*stop)() = start_native_module("./build/module/init/libinit.so");
 		free(lib);
 		return stop;
 	}
@@ -126,41 +127,13 @@ void* start_module(const char* mod_path) {
 	return NULL;
 }
 
-int main() {
-
+// TODO load all modules, not just ./module/init
+void* load_modules() {
 	// read the config to find the init module
 	const char* OXINIT = getenv("YAK_UNSHORN_OXINIT");
 	if (OXINIT == NULL) {
 		OXINIT = "./module/init";
 	}
 
-	// Run the init module in its runtime
-	int (*stop)();
-	stop = start_module(OXINIT);
-	if (stop == NULL) {
-		fprintf(stderr, "Module failed to load. Exiting\n");
-		return -1;
-	}
-
-	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-	InitWindow(800, 450, "Yak Unshorn");
-
-	char text[16];
-	while (!WindowShouldClose())
-	{
-		int chr = GetCharPressed();
-		while(chr != 0) {
-			sprintf(text, "-%d-", chr);
-			fprintf(stderr, "%d\n", chr);
-			chr = GetCharPressed();
-		}
-		BeginDrawing();
-		ClearBackground(RAYWHITE);
-		DrawText(text, 190, 200, 20, DARKGRAY);
-		EndDrawing();
-	}
-
-	CloseWindow();
-
-	return stop();
+	return start_module(OXINIT);
 }
