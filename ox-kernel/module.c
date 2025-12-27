@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <sys/stat.h>
 #include <dlfcn.h>
 #include <string.h>
 
@@ -54,17 +53,20 @@ void* start_native_module(char* lib_path)
 	int code = init();
 	if (code != 0) {
 		fprintf(stderr, "Init failure: %d\n", code);
+		dlclose(handle);
 		return NULL;
 	}
 
 	code = start();
 	if (code != 0) {
 		fprintf(stderr, "Start failure: %d\n", code);
+		dlclose(handle);
 		return NULL;
 	}
 
 	fprintf(stderr, "Started native module %s\n", lib_path);
 
+	dlclose(handle);
 	return stop;
 }
 
@@ -73,7 +75,7 @@ void* start_module(const char* mod_path)
 	char* modfile = "oxmod";
 	int path_len = strlen(modfile) + strlen(mod_path) + 2;
 	char modfile_path[path_len];
-	sprintf(modfile_path, "%s/%s", mod_path, modfile);
+	snprintf(modfile_path, path_len, "%s/%s", mod_path, modfile);
 
 	FILE* file = fopen(modfile_path, "r");
 	if (!file) {
@@ -85,7 +87,6 @@ void* start_module(const char* mod_path)
 	char* runtime = NULL;
 	char* lib = NULL;
 	while(fgets(line, sizeof(line), file)) {
-		fprintf(stderr, "CHECKING LINE: %s", line);
 		if (line[0] == '#' || line[0] == '\n') {
 			continue;
 		}
@@ -120,7 +121,7 @@ void* start_module(const char* mod_path)
 		return stop;
 	}
 
-	fprintf(stderr, "Unknown runtime %s", runtime);
+	fprintf(stderr, "Unknown runtime %s\n", runtime);
 
 	free(runtime);
 	free(lib);
