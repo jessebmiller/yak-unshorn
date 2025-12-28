@@ -5,7 +5,7 @@
 
 // TODO make header files for module and event
 #include "module.c"
-#include "event.c"
+#include "event.h"
 
 int main() {
 
@@ -39,8 +39,8 @@ int main() {
 
 	Ox ox = { 0 };
 	while(!ox.should_exit) {
-		SDL_Event event;
-		if (!SDL_WaitEvent(&event)) {
+		ox_Event event;
+		if (!ox_WaitEvent(&event)) {
 			SDL_Log("WaitEvent error%s\n", SDL_GetError());
 		}
 		if (!handle_event(&ox, event)) {

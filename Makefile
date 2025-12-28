@@ -2,7 +2,7 @@
 
 all:
 	mkdir -p build
-	cd build && cmake .. && make
+	cd build && cmake .. && cmake --build . -j
 
 clean:
 	rm -rf build

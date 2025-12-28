@@ -7,6 +7,8 @@ FetchContent_Declare(
 	GIT_SHALLOW    ON
 )
 
+FetchContent_MakeAvailable(SDL3)
+
 #set(SDL_X11_XSCRNSAVER OFF)
 #set(SDL_X11_XTEST      OFF)
 #set(SDL_X11_XCURSOR    OFF)
@@ -17,5 +19,5 @@ FetchContent_Declare(
 
 add_executable(ox main.c)
 
-target_link_libraries(ox PRIVATE SDL3)
+target_link_libraries(ox PRIVATE SDL3::SDL3)
 
