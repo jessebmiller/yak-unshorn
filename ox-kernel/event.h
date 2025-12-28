@@ -34,18 +34,22 @@ typedef struct {
 	ox_Subscription* next;
 } ox_Subscription
 
+#define SUB_MAX = 1024
+#define TOPICS_COUNT = OX_LAST_EVENT
+
 typedef struct {
-	ox_Arena sub_arena;
-	ox_Subscription* subs[OX_LAST_EVENT];
-	ox_Arena store_arena;
-	ox_EventStore store;
+	ox_Subscription sub_store[sizeof(ox_Subscription) * SUB_MAX];
+	size_t sub_store_offset;
+	ox_Subscription* unsubbed[sizeof(ox_Subscription*) * SUB_MAX];
+	size_t unsubbed_offset;
+	ox_Subscription* topics[TOPICS_COUNT];
 } ox_EventSystem
 
 // ox_publish_event queues an event to be delivered to subscribers
-bool ox_publish_event(ox_Event* event);
+bool ox_publish_event(ox_EventSystem event_system, ox_Event* event);
 
 // ox_dispatch_next blocks until the next event is published and dispatches it to subscribers
-bool ox_dispatch_next(ox_EventSystem* ox_event_system);
+bool ox_dispatch_next(ox_EventSystem* event_system);
 
 // ox_subscribe_events registers a callback for events of the given type
 uint32_t ox_subscribe_events(
@@ -53,5 +57,8 @@ uint32_t ox_subscribe_events(
 	void (*callback)(const ox_Event* event, const void* user_data),
 	void* user_data
 );
+
+// ox_unsubscribe unsubscribes a subscription by id
+void ox_unsubscribe(ox_EventSystem* event_system, size_t id);
 
 #endif

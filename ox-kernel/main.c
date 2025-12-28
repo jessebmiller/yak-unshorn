@@ -1,5 +1,7 @@
 #include <SDL3/SDL.h>
 #include <stdbool.h>
+#include <time.h>
+#include <stdlib.h>
 
 #include "main.h"
 
@@ -8,6 +10,7 @@
 #include "event.h"
 
 int main() {
+	srand(time(NULL));
 
 	Module modules = load_modules();
 	if (modules.stop == NULL) {
