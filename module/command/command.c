@@ -33,5 +33,32 @@
 // Let's start with just exit to get the communication paths figured out
 //
 
+#include <stdio.h>
 
+#include "../../ox-kernel/ox.h"
+
+static void handle_keyboard_event(const ox_Event* event, const void* user_data) {
+	if (event->type != OX_EVENT_KEY_DOWN) return;
+
+	if (event->key_press.key == OX_KEY_ESCAPE) {
+		ox_Event* quit = ox_make_event(OX_EVENT_QUIT);
+		ox_publish_event(quit);
+	}
+}
+
+OX_INIT(command) {
+	printf("Initializing command module\n");
+	ox_subscribe_events(OX_EVENT_KEY_DOWN, handle_keyboard_event, NULL);
+	return 0;
+}
+
+int start() {
+	printf("Starting command module\n");
+	return 0;
+}
+
+int stop() {
+	printf("Stopping command module\n");
+	return 0;
+}
 

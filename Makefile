@@ -2,7 +2,7 @@
 
 all:
 	mkdir -p build
-	cd build && cmake .. && cmake --build . -j
+	cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && cmake --build . -j
 
 clean:
 	rm -rf build

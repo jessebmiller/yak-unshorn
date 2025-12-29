@@ -2,63 +2,51 @@
 #define OX_KERNEL_EVENT_H
 
 #include <stdbool.h>
-#include "arena.h"
+#include <stdint.h>
+#include <stddef.h>
+#include <SDL3/SDL.h>
 
-typedef enum {
-	OX_EVENT_QUIT;
-	OX_EVENT_LAST;
-} ox_EventType
+#include "event_types.h"
 
-typedef struct{
-	ox_EventType type;
-	uint32_t reserved;
-	uint64_t timestamp;		
-} ox_Quit
+// oxi_time_ns returns the number of nanoseconds since the unix epoch
+uint64_t oxi_time_ns();
 
-typedef struct {
-	ox_EventType type;
-	uint32_t reserved;
-	uint64_t timestamp;
-} ox_OpenWindow
+// oxi_make_event_system returns a pointer to a newly initialized event system
+ox_EventSystem* oxi_make_event_system();
 
-typedef union {
-	uint32_t type;			// ox_EventType
-	ox_OpenWindow open_window;	// OX_EVENT_OPEN_WINDOW
-	ox_Quit quit;			// OX_EVENT_QUIT
-} ox_Event
+// oxi_destroy_event_system frees all allocations fo the event system
+bool oxi_destroy_event_system(ox_EventSystem* es);
 
-typedef struct {
-	void (*callback)(const ox_Event* event, const void* user_data);
-	void* user_data;
-	uint32_t id;
-	ox_Subscription* next;
-} ox_Subscription
+// oxi_make_event returns a zero initialized event of the given type
+ox_Event* oxi_make_event(ox_EventSystem* event_system, ox_EventType type);
 
-#define SUB_MAX = 1024
-#define TOPICS_COUNT = OX_LAST_EVENT
+// oxi_destroy_event frees the memory for an ox_Event*
+bool oxi_destroy_event(ox_EventSystem* event_system, ox_Event* event);
 
-typedef struct {
-	ox_Subscription sub_store[sizeof(ox_Subscription) * SUB_MAX];
-	size_t sub_store_offset;
-	ox_Subscription* unsubbed[sizeof(ox_Subscription*) * SUB_MAX];
-	size_t unsubbed_offset;
-	ox_Subscription* topics[TOPICS_COUNT];
-} ox_EventSystem
+// oxi_from_sdl_event translates an SDL_Event to an ox_Event
+ox_Event* oxi_from_sdl_event(ox_EventSystem* event_system, SDL_Event* sdl_event);
+
+// oxi_from_sdl_key translates an SDL_Key to an ox_Key
+ox_Key oxi_from_sdl_key(SDL_Keycode sdl_key);
+
+// ox_from_sdl_event translates an ox_Event to an SDL_Event
+bool oxi_to_sdl_event(ox_Event* ox_event, SDL_Event* sdl_event);
 
 // ox_publish_event queues an event to be delivered to subscribers
-bool ox_publish_event(ox_EventSystem event_system, ox_Event* event);
+bool oxi_publish_event(ox_EventSystem* event_system, ox_Event* event);
 
 // ox_dispatch_next blocks until the next event is published and dispatches it to subscribers
-bool ox_dispatch_next(ox_EventSystem* event_system);
+bool oxi_dispatch_next(ox_EventSystem* event_system);
 
 // ox_subscribe_events registers a callback for events of the given type
-uint32_t ox_subscribe_events(
+int oxi_subscribe_events(
+	ox_EventSystem* event_system,
 	ox_EventType type,
 	void (*callback)(const ox_Event* event, const void* user_data),
 	void* user_data
 );
 
-// ox_unsubscribe unsubscribes a subscription by id
-void ox_unsubscribe(ox_EventSystem* event_system, size_t id);
+// ox_unsubscribe unsubscribes a subscription by id returns number of subscriptions unsubbed
+int oxi_unsubscribe(ox_EventSystem* event_system, size_t id);
 
 #endif

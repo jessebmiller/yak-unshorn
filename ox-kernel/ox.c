@@ -3,20 +3,34 @@
 #include <time.h>
 #include <stdlib.h>
 
-#include "main.h"
+#include "ox.h"
 
-// TODO make header files for module and event
+// TODO make module.h don't import modlue.c
 #include "module.c"
 #include "event.h"
+
+static void quit_handler(const ox_Event* event, const void* user_data) {
+	if (event->type != OX_EVENT_QUIT) return;
+	Ox* ox = (Ox*)user_data;
+	ox->should_exit = true;
+}
 
 int main() {
 	srand(time(NULL));
 
-	Module modules = load_modules();
+	Ox ox = { oxi_make_event_system(), false };
+	const ox_Api api = {
+		oxi_publish_event,
+		oxi_subscribe_events,
+		oxi_make_event,
+	};
+
+	Module modules = load_modules(&ox, &api);
 	if (modules.stop == NULL) {
 		return -1;
 	}
 
+	// TODO wrap SDL windowing
 	bool ok = SDL_Init(SDL_INIT_VIDEO);
 	if (!ok) {
 		SDL_Log("Failed to init video");
@@ -40,19 +54,17 @@ int main() {
 	SDL_RenderClear(renderer);
 	SDL_RenderPresent(renderer);
 
-	Ox ox = { 0 };
-	while(!ox.should_exit) {
-		ox_Event event;
-		if (!ox_WaitEvent(&event)) {
-			SDL_Log("WaitEvent error%s\n", SDL_GetError());
-		}
-		if (!handle_event(&ox, event)) {
-			SDL_Log("Handle Event Failure");
-		}
+	oxi_subscribe_events(ox.event_system, OX_EVENT_QUIT, &quit_handler, &ox);
 
+	SDL_RenderPresent(renderer);
+	while(!ox.should_exit) {
+		oxi_dispatch_next(ox.event_system);
+		
+		// TODO wrap SDL_RenderPresent in oxi_render
 		SDL_RenderPresent(renderer);
 	}
 
+	free(ox.event_system);
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();

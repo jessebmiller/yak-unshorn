@@ -3,10 +3,13 @@
 #include <dlfcn.h>
 #include <string.h>
 
+#include "ox.h"
+
 #define MAX_LINE 256
 #define MAX_VALUE 64
 
-typedef int (*ModuleInit)(void);
+// TODO move types to module.h
+typedef int (*ModuleInit)(Ox* ox, const ox_Api* api);
 typedef int (*ModuleStart)(void);
 typedef int (*ModuleStop)(void);
 typedef int (*UnloadFunc)(void*);
@@ -47,7 +50,7 @@ int unload_native_module(void* handle) {
 Module start_native_module(char* lib_path) 
 {
 	void* handle;
-	ModuleInit init;
+	ModuleInit ox_init;
 	ModuleStart start;
 	ModuleStop stop;
 	char* error;
@@ -64,7 +67,7 @@ Module start_native_module(char* lib_path)
 
 	dlerror();
 
-	init = dlsym(handle, "init");
+	ox_init = dlsym(handle, "ox_init");
 	error = dlerror();
 	if (error != NULL) {
 		fprintf(stderr, "Error loading symbol init %s\n", error);
@@ -74,6 +77,7 @@ Module start_native_module(char* lib_path)
 
 	start = dlsym(handle, "start");
 	error = dlerror();
+	// TODO make start optional
 	if (error != NULL) {
 		fprintf(stderr, "Error loading symbol start %s\n", error);
 		dlclose(handle);
@@ -88,7 +92,7 @@ Module start_native_module(char* lib_path)
 		return (Module){0};
 	}
 
-	int code = init();
+	int code = ox_init(_ox, _api);
 	if (code != 0) {
 		fprintf(stderr, "Init failure: %d\n", code);
 		dlclose(handle);
@@ -159,7 +163,7 @@ Module start_module(const char* mod_path)
 	
 	if (strcmp(runtime, "native") == 0) {
 		free(runtime);
-		Module module = start_native_module("./build/module/init/libinit.so");
+		Module module = start_native_module("./build/module/command/libcommand.so");
 		free(lib);
 		return module;
 	}
@@ -172,7 +176,10 @@ Module start_module(const char* mod_path)
 }
 
 // TODO load all modules, not just ./module/init
-Module load_modules() {
+// TODO prefix all module functions with ox_
+Module load_modules(Ox* ox, const ox_Api* api) {
+	_ox = ox;
+	_api = api;
 	// read the config to find the init module
 	const char* OXINIT = getenv("YAK_UNSHORN_OXINIT");
 	if (OXINIT == NULL) {

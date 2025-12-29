@@ -3,3 +3,4 @@ project(yak-unshorn C)
 
 add_subdirectory(ox-kernel)
 add_subdirectory(module/init)
+add_subdirectory(module/command)

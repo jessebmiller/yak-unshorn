@@ -9,15 +9,7 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(SDL3)
 
-#set(SDL_X11_XSCRNSAVER OFF)
-#set(SDL_X11_XTEST      OFF)
-#set(SDL_X11_XCURSOR    OFF)
-#set(SDL_X11_XINPUT     OFF)
-#set(SDL_X11_XFILES     OFF)
-#set(SDL_X11_XFIXES     OFF)
-#set(SDL_X11_XRANDR     OFF)
-
-add_executable(ox main.c)
+add_executable(ox ox.c event.c)
 
 target_link_libraries(ox PRIVATE SDL3::SDL3)
 
