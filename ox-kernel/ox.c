@@ -31,7 +31,10 @@ int main() {
 	}
 
 	// TODO wrap SDL windowing
-	bool ok = SDL_Init(SDL_INIT_VIDEO);
+	printf("SDL Version: %s\n", SDL_GetRevision());
+	bool ok = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+	SDL_SetHint(SDL_HINT_EVENT_LOGGING, "1");
+
 	if (!ok) {
 		SDL_Log("Failed to init video");
 		SDL_Quit();
@@ -51,20 +54,25 @@ int main() {
 	}
 
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
+	
+	SDL_SetRenderDrawColor(renderer, 0xFF, 0x55, 0x33, 0xFF);
 	SDL_RenderClear(renderer);
 	SDL_RenderPresent(renderer);
 
 	oxi_subscribe_events(ox.event_system, OX_EVENT_QUIT, &quit_handler, &ox);
 
 	SDL_RenderPresent(renderer);
+
 	while(!ox.should_exit) {
 		oxi_dispatch_next(ox.event_system);
+
+		printf("Presenting\n");
 		
 		// TODO wrap SDL_RenderPresent in oxi_render
 		SDL_RenderPresent(renderer);
 	}
 
-	free(ox.event_system);
+	oxi_destroy_event_system(ox.event_system);
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();

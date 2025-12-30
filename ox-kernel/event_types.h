@@ -6,10 +6,13 @@
 typedef enum {
 	OX_EVENT_ZERO = 0,
 
-	OX_EVENT_QUIT,
+	OX_EVENT_WINDOW_EXPOSED,
+
 	OX_EVENT_KEY_DOWN,
 	OX_EVENT_KEY_UP,
 
+	OX_EVENT_QUIT,
+	
 	OX_EVENT_LAST
 } ox_EventType;
 
@@ -19,6 +22,13 @@ typedef struct {
 	uint64_t timestamp;
 } ox_EventCommonFields;
 
+typedef struct {
+	ox_EventType type;
+	uint32_t reserved;
+	uint64_t timestamp;
+} ox_WindowExposed;
+
+// TODO change quit to quit cmd
 typedef struct {
 	ox_EventType type;
 	uint32_t reserved;

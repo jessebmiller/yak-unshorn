@@ -100,8 +100,8 @@ ox_Event* oxi_from_sdl_event(ox_EventSystem* event_system, SDL_Event* sdl_event)
 		return NULL;
 	}
 	switch(sdl_event->type) {
-		case SDL_EVENT_QUIT:
-			return oxi_make_event(event_system, OX_EVENT_QUIT);
+		case SDL_EVENT_WINDOW_EXPOSED:
+			return oxi_make_event(event_system, OX_EVENT_WINDOW_EXPOSED);
 		case SDL_EVENT_KEY_DOWN:
 			ox_Key key = oxi_from_sdl_key(sdl_event->key.key);
 			if (!key) {
@@ -111,6 +111,8 @@ ox_Event* oxi_from_sdl_event(ox_EventSystem* event_system, SDL_Event* sdl_event)
 			ox_Event* event = oxi_make_event(event_system, OX_EVENT_KEY_DOWN);
 			event->key_press.key = key;
 			return event;
+		case SDL_EVENT_QUIT:
+			return oxi_make_event(event_system, OX_EVENT_QUIT);
 		default:
 			fprintf(stderr, "WARN: Unknown SDL_Event type %d\n", sdl_event->type);
 			return false;
