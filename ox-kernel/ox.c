@@ -15,6 +15,21 @@ static void quit_handler(const ox_Event* event, const void* user_data) {
 	ox->should_exit = true;
 }
 
+static bool setup(Ox* ox) {
+	printf("SDL Version: %ds\n", SDL_GetRevision());
+	
+	bool ok = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+	if (!ok) {
+		SDL_Log("SDL failed to init");
+		ox->should_exit = true;
+		SDL_Quit(); // TODO setup teardown registration on Ox and move this there
+		return false;
+	}
+	SDL_Log("SDL initialized");
+
+	return true;
+}
+
 int main() {
 	srand(time(NULL));
 
@@ -24,25 +39,17 @@ int main() {
 		oxi_subscribe_events,
 		oxi_make_event,
 	};
+	
+	setup();
+	SDL_SetHint(SDL_HINT_EVENT_LOGGING, "1");
 
+	// TODO:4 move this to ox.modules.init()
 	Module modules = load_modules(&ox, &api);
 	if (modules.stop == NULL) {
 		return -1;
 	}
 
-	// TODO wrap SDL windowing
-	printf("SDL Version: %s\n", SDL_GetRevision());
-	bool ok = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
-	SDL_SetHint(SDL_HINT_EVENT_LOGGING, "1");
-
-	if (!ok) {
-		SDL_Log("Failed to init video");
-		SDL_Quit();
-		unload_module(modules);
-		return -1;
-	}
-	SDL_Log("Video initialized");
-
+	// TODO:9 move this to ox.display.init()
 	SDL_Window* window;
 	window = SDL_CreateWindow("Yak Unshorn", 800, 600,
 			SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
@@ -53,25 +60,21 @@ int main() {
 		return -1;
 	}
 
-	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
-	
-	SDL_SetRenderDrawColor(renderer, 0xFF, 0x55, 0x33, 0xFF);
-	SDL_RenderClear(renderer);
-	SDL_RenderPresent(renderer);
-
 	oxi_subscribe_events(ox.event_system, OX_EVENT_QUIT, &quit_handler, &ox);
 
+	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
+	SDL_SetRenderDrawColor(renderer, 0xFF, 0x55, 0x33, 0xFF);
 	SDL_RenderPresent(renderer);
-
 	while(!ox.should_exit) {
 		oxi_dispatch_next(ox.event_system);
-
-		printf("Presenting\n");
 		
 		// TODO wrap SDL_RenderPresent in oxi_render
+		SDL_RenderClear(renderer);
 		SDL_RenderPresent(renderer);
 	}
 
+	// TODO:1 make cleanup registry and call them all here
+	// nice
 	oxi_destroy_event_system(ox.event_system);
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);

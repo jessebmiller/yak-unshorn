@@ -4,8 +4,13 @@
 #include "event_types.h"
 #include <stdbool.h>
 
+// TODO Ox text buffer system (try it as a native module)
+// TODO Ox runtime system (make them modules that translate the api for a given language)
+
 typedef struct {
+	// TODO Ox display system
 	ox_EventSystem* event_system;
+	// TODO Ox modules system
 	bool should_exit;
 } Ox;
 
