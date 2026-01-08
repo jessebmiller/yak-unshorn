@@ -2,6 +2,7 @@
 #define OX_H
 
 #include "event_types.h"
+#include "display.h"
 #include <stdbool.h>
 
 // TODO Ox text buffer system (try it as a native module)
@@ -11,6 +12,7 @@ typedef struct {
 	// TODO Ox display system
 	ox_EventSystem* event_system;
 	// TODO Ox modules system
+	ox_Display* display;
 	bool should_exit;
 } Ox;
 
