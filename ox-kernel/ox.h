@@ -2,10 +2,12 @@
 #define OX_H
 
 #include "event_types.h"
+#include "display.h"
 #include <stdbool.h>
 
 typedef struct {
 	ox_EventSystem* event_system;
+	ox_Display* display_system;
 	bool should_exit;
 } Ox;
 

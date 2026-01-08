@@ -1,13 +1,15 @@
-#include <SDL3/SDL.h>
 #include <stdbool.h>
 #include <time.h>
 #include <stdlib.h>
+
+#include <SDL3/SDL.h>
 
 #include "ox.h"
 
 // TODO make module.h don't import modlue.c
 #include "module.c"
 #include "event.h"
+#include "display.h"
 
 static void quit_handler(const ox_Event* event, const void* user_data) {
 	if (event->type != OX_EVENT_QUIT) return;
@@ -15,11 +17,21 @@ static void quit_handler(const ox_Event* event, const void* user_data) {
 	ox->should_exit = true;
 }
 
+static bool render_callback(SDL_Renderer* renderer, void* user_data) {
+	SDL_SetRenderDrawColor(display.renderer, 0x00, 0x55, 0x33, 0xFF);
+	SDL_FRect rect = { 5, 5, 50, 50 };
+	SDL_RenderFillRect(renderer, rect);
+}
+
 int main() {
 	srand(time(NULL));
 
-	Ox ox = { oxi_make_event_system(), false };
-	const ox_Api api = {
+	Ox ox = { 
+		oxi_make_event_system(),
+		oxi_make_display(),
+		false,
+	};
+	const ox_Api api = {:
 		oxi_publish_event,
 		oxi_subscribe_events,
 		oxi_make_event,
@@ -30,51 +42,35 @@ int main() {
 		return -1;
 	}
 
-	// TODO wrap SDL windowing
 	printf("SDL Version: %s\n", SDL_GetRevision());
 	bool ok = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 	SDL_SetHint(SDL_HINT_EVENT_LOGGING, "1");
 
 	if (!ok) {
-		SDL_Log("Failed to init video");
+		SDL_Log("Failed to init SDL");
 		SDL_Quit();
 		unload_module(modules);
 		return -1;
 	}
-	SDL_Log("Video initialized");
+	SDL_Log("SDL initialized");
 
-	SDL_Window* window;
-	window = SDL_CreateWindow("Yak Unshorn", 800, 600,
-			SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
-	if (window == NULL) {
-		SDL_Log("NULL Window");
-		SDL_Quit();
-		unload_module(modules);
-		return -1;
-	}
+	// TODO:1 should this be ox_ not oxi_
+	oxi_subscribe_events(
+			ox.event_system,
+			OX_EVENT_QUIT,
+			&quit_handler,
+			&ox);
 
-	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
-	
-	SDL_SetRenderDrawColor(renderer, 0xFF, 0x55, 0x33, 0xFF);
-	SDL_RenderClear(renderer);
-	SDL_RenderPresent(renderer);
+	ox_register_render_cb(&ox.display, render_callback, NULL);
 
-	oxi_subscribe_events(ox.event_system, OX_EVENT_QUIT, &quit_handler, &ox);
-
-	SDL_RenderPresent(renderer);
-
+	oxi_render_and_present(ox.display);
 	while(!ox.should_exit) {
 		oxi_dispatch_next(ox.event_system);
-
-		printf("Presenting\n");
-		
-		// TODO wrap SDL_RenderPresent in oxi_render
-		SDL_RenderPresent(renderer);
+		oxi_render_and_present(ox.display);
 	}
 
 	oxi_destroy_event_system(ox.event_system);
-	SDL_DestroyRenderer(renderer);
-	SDL_DestroyWindow(window);
+	oxi_destroy_display(ox.display)
 	SDL_Quit();
 	return unload_module(modules);
 }
