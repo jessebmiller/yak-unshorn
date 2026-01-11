@@ -89,6 +89,12 @@ bool oxi_destroy_event(ox_EventSystem* event_system, ox_Event* event) {
 ox_Key oxi_from_sdl_key(SDL_Keycode sdl_key) {
 	switch(sdl_key) {
 		case SDLK_ESCAPE: return OX_KEY_ESCAPE;
+
+		case SDLK_A:      return OX_KEY_A;
+		case SDLK_B:      return OX_KEY_B;
+
+		case SDLK_Q:      return OX_KEY_Q;
+
 		default:          return OX_KEY_NULL;
 	}
 }
@@ -102,19 +108,20 @@ ox_Event* oxi_from_sdl_event(ox_EventSystem* event_system, SDL_Event* sdl_event)
 	switch(sdl_event->type) {
 		case SDL_EVENT_WINDOW_EXPOSED:
 			return oxi_make_event(event_system, OX_EVENT_WINDOW_EXPOSED);
+
+		case SDL_EVENT_KEY_UP:
 		case SDL_EVENT_KEY_DOWN:
 			ox_Key key = oxi_from_sdl_key(sdl_event->key.key);
-			if (!key) {
-				printf("WARN: Unknown SDL_Keycode(%d)\n", sdl_event->key);
-				return false;
-			}
-			ox_Event* event = oxi_make_event(event_system, OX_EVENT_KEY_DOWN);
+			if (!key) return false;
+
+			ox_Event* event = oxi_make_event(event_system, sdl_event->type);
 			event->key_press.key = key;
 			return event;
+		
 		case SDL_EVENT_QUIT:
 			return oxi_make_event(event_system, OX_EVENT_QUIT);
+		
 		default:
-			fprintf(stderr, "WARN: Unknown SDL_Event type %d\n", sdl_event->type);
 			return false;
 	}
 }

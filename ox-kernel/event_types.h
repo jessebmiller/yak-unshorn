@@ -11,6 +11,8 @@ typedef enum {
 	OX_EVENT_KEY_DOWN,
 	OX_EVENT_KEY_UP,
 
+	OX_EVENT_TEXT_INPUT,
+
 	OX_EVENT_QUIT,
 	
 	OX_EVENT_LAST
@@ -20,7 +22,7 @@ typedef struct {
 	ox_EventType type;
 	uint32_t reserved;
 	uint64_t timestamp;
-} ox_EventCommonFields;
+} ox_EventCommon;
 
 typedef struct {
 	ox_EventType type;
@@ -38,6 +40,9 @@ typedef struct {
 typedef enum {
 	OX_KEY_NULL,
 	OX_KEY_ESCAPE,
+	OX_KEY_A,
+	OX_KEY_B,
+	OX_KEY_Q,
 } ox_Key;
 
 typedef struct {
@@ -49,7 +54,7 @@ typedef struct {
 
 typedef union {
 	uint32_t type;			// ox_EventType
-	ox_EventCommonFields common;
+	ox_EventCommon common;
 	ox_KeyPress key_press;		// OX_KEY_DOWN, OX_KEY_UP
 	ox_Quit quit;			// OX_EVENT_QUIT
 } ox_Event;

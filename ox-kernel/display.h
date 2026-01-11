@@ -21,7 +21,7 @@ typedef struct {
 } ox_Display;
 
 // ox_make_display_system returns display system of the given type
-ox_Display oxi_make_display();
+ox_Display* oxi_make_display();
 
 // ox_destroy_display_system frees a display system
 void oxi_destroy_display(ox_Display* display);
@@ -29,9 +29,14 @@ void oxi_destroy_display(ox_Display* display);
 // ox_register_render_cb registers a render cb with the display
 ox_RenderCB* ox_register_render_cb(
 		ox_Display* display,
-		bool (*render_cb)(SDL_Renderer* renderer));
+		bool (*render_cb)(SDL_Renderer* renderer, void* user_data),
+		void* user_data
+		);
 
 // ox_deregister_render_cb deregisters a cb from the display if present
 void ox_deregister_render_cb(ox_Display* display, ox_RenderCB* cb);
+
+// oxi_render_and_present calls all registered renderers and presents the result
+bool oxi_render_and_present(ox_Display* display);
 
 #endif
