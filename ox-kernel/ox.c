@@ -11,7 +11,7 @@
 #include "event.h"
 #include "display.h"
 
-static void quit_handler(const ox_Event* event, const void* user_data) {
+static void quit_handler(ox_Event* event, void* user_data) {
 	if (event->type != OX_EVENT_QUIT) return;
 	Ox* ox = (Ox*)user_data;
 	ox->should_exit = true;

@@ -21,7 +21,7 @@ typedef struct {
 	int (*oxi_subscribe_events)(
 			ox_EventSystem* es,
 			ox_EventType type, 
-			void(*callback)(const ox_Event* event, const void* user_data),
+			void(*callback)(ox_Event* event, void* user_data),
 			void* user_data);
 	ox_Event* (*oxi_make_event)(ox_EventSystem* es, ox_EventType type);
 } ox_Api;
@@ -35,7 +35,7 @@ static inline bool ox_publish_event(ox_Event* event) {
 
 static inline bool ox_subscribe_events(
 		ox_EventType type,
-		void(*callback)(const ox_Event* event, const void* user_data),
+		void(*callback)(ox_Event* event, void* user_data),
 		void* user_data) {
 	return _api->oxi_subscribe_events(_ox->event_system, type, callback, user_data);
 }

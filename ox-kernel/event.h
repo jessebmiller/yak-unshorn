@@ -42,11 +42,11 @@ bool oxi_dispatch_next(ox_EventSystem* event_system);
 int oxi_subscribe_events(
 	ox_EventSystem* event_system,
 	ox_EventType type,
-	void (*callback)(const ox_Event* event, const void* user_data),
+	void (*callback)(ox_Event* event, void* user_data),
 	void* user_data
 );
 
 // ox_unsubscribe unsubscribes a subscription by id returns number of subscriptions unsubbed
-int oxi_unsubscribe(ox_EventSystem* event_system, size_t id);
+bool oxi_unsubscribe(ox_EventSystem* event_system, size_t id);
 
 #endif

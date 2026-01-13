@@ -37,44 +37,13 @@
 #include <stdio.h>
 
 #include "../../ox-kernel/ox.h"
+#include "../../bunuelib.h"
 
 #define POLYPHONY 10
 
-// TODO:2 move to bunuelib and document usage
-#define BUNUEL_FIXED_SET(prefix, T, capacity) \
-	typedef struct { T items[capacity]; int count; } T##Set; \
-	\
-	static inline int prefix##_find(T##Set* set, T item) { \
-		int found_at = -1; \
-		for (int i = 0; i < set->count; i++) { \
-			if (set->items[i] == item) { \
-				found_at = i; \
-				break; \
-			} \
-		} \
-		return found_at; \
-	} \
-	\
-	static inline bool prefix##_add(T##Set* set, T item) { \
-		if (prefix##_find(set, item) >= 0) return true; \
-		if (set->count > capacity) return false; \
-		set->items[set->count++] = item; \
-		return true; \
-	} \
-	\
-	static inline bool prefix##_remove(T##Set* set, T item) { \
-		int found_at = prefix##_find(set, item); \
-		if (found_at < 0) return false; \
-		set->count -= 1; \
-		set->items[found_at] = set->items[set->count]; \
-		return true; \
-	}\
-	\
-	static inline int prefix##_avail(T##Set* set) { \
-		return capacity - set->count; \
-	}
-
-BUNUEL_FIXED_SET(key_set, ox_Key, POLYPHONY)
+BUNUEL_FIXED_SET(key_set, ox_Key, POLYPHONY) {
+	return *p == *q;
+}
 
 typedef struct {
 	ox_KeySet keys_down;
@@ -82,11 +51,15 @@ typedef struct {
 
 static cmd_State cmd_state = {0};
 
-static bool set_key_down(ox_KeySet* keys_down, ox_Key key) {
-	return key_set_add(keys_down, key);
+static void debug_log_cmd_state(cmd_State state) {
+	printf("cmd_State(keys_down: ");
+	for (int i = 0; i < state.keys_down.count; i++) {
+		printf("%d", state.keys_down.items[i]);
+	}
+	printf(")\n");
 }
 
-static void handle_key_down(const ox_Event* event, const void* user_data) {
+static void handle_key_down(ox_Event* event, void* user_data) {
 	assert(event->type == OX_EVENT_KEY_DOWN);
 	cmd_State* cmd_state = (cmd_State*)user_data;
 
@@ -96,13 +69,15 @@ static void handle_key_down(const ox_Event* event, const void* user_data) {
 		return;
 	}
 
-	set_key_down(&cmd_state->keys_down, event->key_press.key);
+	key_set_add(&cmd_state->keys_down, event->key_press.key);
+	debug_log_cmd_state(*cmd_state);
 }
 
-static void handle_key_up(const ox_Event* event, const void* user_data) {
+static void handle_key_up(ox_Event* event, void* user_data) {
 	assert(event->type == OX_EVENT_KEY_UP);
 	cmd_State* cmd_state = (cmd_State*)user_data;
-	key_set_remove(&cmd_state->keys_down, event->key_press.key);
+	key_set_remove(&cmd_state->keys_down, &event->key_press.key);
+	debug_log_cmd_state(*cmd_state);
 }
 
 OX_INIT(command) {

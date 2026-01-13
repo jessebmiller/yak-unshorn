@@ -174,16 +174,21 @@ bool oxi_dispatch_next(ox_EventSystem* event_system) {
 	}
 
 	ox_Subscription* sub = event_system->topics[event->type];
+	printf("subscription %p\n", sub); // TODO: Why is this NULL?
 	while(sub != NULL) {
 		if (sub->callback == NULL) {
 			// TODO register this error somewhere
-			printf("WARN: Found ox_Subscription with NULL callback. Skipping");
+			printf("WARN: Found ox_Subscription with NULL callback. Skipping\n");
 			sub = sub->next;
 			break;
 		}
 		sub->callback(event, sub->user_data);
 		sub = sub->next;
 	}
+
+	//TODO: Once we pass the event to all callbacks can we drop it?
+	/////// do we even need a pool of memory for events?
+	/////// they're either ephemeral or belong in an event store forever.
 
 	return true;
 }
@@ -193,34 +198,22 @@ bool oxi_dispatch_next(ox_EventSystem* event_system) {
 int oxi_subscribe_events(
 		ox_EventSystem* event_system,
 		ox_EventType type,
-		void (*callback)(const ox_Event* event, const void* user_data),
+		void (*callback)(ox_Event* event, void* user_data),
 		void* user_data
 ) {
-	ox_Subscription* sub;
-	ox_SubArena* sub_arena = &event_system->sub_arena;
-
-	// if there is an tombstone sub available use it
-	if (sub_arena->tombstone_offset >= 1) {
-		sub_arena->tombstone_offset -= 1;
-		sub = sub_arena->tombstones[sub_arena->tombstone_offset];
-	} else if (sub_arena->offset < SUB_MAX) {
-		// use the next unused subscription
-		sub = &sub_arena->subs[sub_arena->offset];
-		sub_arena->offset += 1;
+	int id = rand();
+	if (ox_sub_avail(&event_system->subscription_set) >= 0) {
+		ox_Subscription sub = {
+			.id = id,
+			.callback = callback,
+			.user_data = user_data,
+			.next = event_system->topics[type],
+		};
+		event_system->topics[type] = ox_sub_add(&event_system->subscription_set, sub);
 	} else {
 		printf("ERROR: Max subscriptions");
 		return 0;
 	}
-
-	uint32_t id = rand();
-	
-	sub->callback = callback;
-	sub->user_data = user_data;
-	sub->id = id;
-	sub->next =  event_system->topics[type];
-	
-	event_system->topics[type] = sub;
-
 	return id;
 }
 
@@ -242,36 +235,13 @@ static ox_Subscription* pop_by_id(ox_Subscription* sub_list, size_t id) {
 }
 
 // ox_unsubscribe unsubscribes a subscription by id
-int oxi_unsubscribe(ox_EventSystem* event_system, size_t id) {
-	ox_SubArena* sub_arena = &event_system->sub_arena;
-
+bool oxi_unsubscribe(ox_EventSystem* event_system, size_t id) {
 	// scan subscriptions in topics for id
 	ox_Subscription* sub;
-	// TODO:1 build todo parser that respects that syntax
-	// TODO:4 consider. is this too clever?
-	int i = 0;
-	while((sub = pop_by_id(event_system->topics[i], id)) == NULL) {
-		if ((i += 1) >= TOPICS_COUNT) break;
+	for (int i = 0; i < TOPICS_COUNT; i++) {
+		sub = pop_by_id(event_system->topics[i], id);
+		if (sub != NULL) break;
 	}
 	if (sub == NULL) return 0;
-
-	// free the sub
-	// Check if it's already in the tombstone array
-	for (int i = 0; i < sub_arena->tombstone_offset; i++) {
-		if (sub_arena->tombstones[i]->id == id) {
-			printf("WARN: Subscription(%d) already tombstone but was found in a topic", id);
-			return 0;
-		}
-	}
-
-	// abort if there isn't room in the tombstone array
-	if (sub_arena->tombstone_offset == SUB_MAX) {
-		printf("ERROR: Unsub max");
-		return 0;
-	}
-
-	// add it to tombstones
-	sub_arena->tombstones[sub_arena->tombstone_offset] = sub;
-	sub_arena->tombstone_offset += 1;
-	return 1;
+	return ox_sub_remove(&event_system->subscription_set, sub);
 }

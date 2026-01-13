@@ -2,6 +2,7 @@
 #define OX_EVENT_TYPES_H
 
 #include <stdint.h>
+#include "../bunuelib.h"
 
 typedef enum {
 	OX_EVENT_ZERO = 0,
@@ -59,22 +60,7 @@ typedef union {
 	ox_Quit quit;			// OX_EVENT_QUIT
 } ox_Event;
 
-typedef struct ox_Subscription {
-	void (*callback)(const ox_Event* event, const void* user_data);
-	void* user_data;
-	uint32_t id;
-	struct ox_Subscription* next;
-} ox_Subscription;
-
-#define SUB_MAX 1024
-typedef struct {
-	ox_Subscription subs[SUB_MAX];
-	size_t offset;
-	
-	ox_Subscription* tombstones[SUB_MAX];
-	size_t tombstone_offset;
-} ox_SubArena;
-
+// TODO:8 events is overflowing because we don't remove them...
 #define EVENT_MAX 16
 typedef struct {
 	ox_Event events[EVENT_MAX];
@@ -84,10 +70,22 @@ typedef struct {
 	size_t tombstone_offset;
 } ox_EventArena;
 
+typedef struct ox_Subscription {
+	int id;
+	void (*callback)(ox_Event* event, void* user_data);
+	void* user_data;
+	struct ox_Subscription* next;
+} ox_Subscription;
+
+#define SUB_MAX 1024
+BUNUEL_FIXED_SET(ox_sub, ox_Subscription, SUB_MAX) {
+	return p->id == q->id;
+}
+
 #define TOPICS_COUNT OX_EVENT_LAST
 typedef struct {
 	ox_Subscription* topics[TOPICS_COUNT];
-	ox_SubArena sub_arena;
+	ox_SubscriptionSet subscription_set;
 	ox_EventArena event_arena;
 } ox_EventSystem;
 
