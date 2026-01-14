@@ -9,7 +9,9 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(SDL3)
 
-add_executable(ox ox.c event.c display.c)
+add_library(ox-kernel STATIC event.c display.c)
+target_link_libraries(ox-kernel PUBLIC SDL3::SDL3)
 
-target_link_libraries(ox PRIVATE SDL3::SDL3)
+add_executable(ox ox.c)
+target_link_libraries(ox PRIVATE ox-kernel)
 
