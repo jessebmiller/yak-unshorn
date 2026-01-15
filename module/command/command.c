@@ -41,42 +41,49 @@
 
 #define POLYPHONY 10
 
-BUNUEL_FIXED_SET(key_set, ox_Key, POLYPHONY) {
+BUNUEL_FIXED_SET(key_set, SDL_Keycode, POLYPHONY) {
 	return *p == *q;
 }
 
 typedef struct {
-	ox_KeySet keys_down;
+	SDL_KeycodeSet keys_down;
 } cmd_State;
+
+// TODO:
+// - key chords (all keys pressed on a key down)
+// - the sequence of chords
+// - intrepreter that reads the sequence and publishes commands when parsed
 
 static cmd_State cmd_state = {0};
 
 static void debug_log_cmd_state(cmd_State state) {
-	printf("cmd_State(keys_down: ");
+	printf("cmd_State keys_down: ");
 	for (int i = 0; i < state.keys_down.count; i++) {
-		printf("%d", state.keys_down.items[i]);
+		printf("[%d]", state.keys_down.items[i]);
 	}
-	printf(")\n");
+	printf("\n");
 }
 
-static void handle_key_down(ox_Event* event, void* user_data) {
-	assert(event->type == OX_EVENT_KEY_DOWN);
+static void handle_key_down(ox_Event event, void* user_data) {
+	assert(event.type == OX_EVENT_KEY_DOWN);
 	cmd_State* cmd_state = (cmd_State*)user_data;
 
-	if (event->key_press.key == OX_KEY_ESCAPE) {
-		ox_Event* quit = ox_make_event(OX_EVENT_QUIT);
-		ox_publish_event(quit);
+	// TODO: move this so configurable key sequence to quit
+	if (event.key_press.key == SDLK_ESCAPE) {
+		ox_Event quit;
+		ox_init_event(&quit, OX_EVENT_QUIT);
+		ox_publish_event(&quit);
 		return;
 	}
 
-	key_set_add(&cmd_state->keys_down, event->key_press.key);
+	key_set_add(&cmd_state->keys_down, event.key_press.key);
 	debug_log_cmd_state(*cmd_state);
 }
 
-static void handle_key_up(ox_Event* event, void* user_data) {
-	assert(event->type == OX_EVENT_KEY_UP);
+static void handle_key_up(ox_Event event, void* user_data) {
+	assert(event.type == OX_EVENT_KEY_UP);
 	cmd_State* cmd_state = (cmd_State*)user_data;
-	key_set_remove(&cmd_state->keys_down, &event->key_press.key);
+	key_set_remove(&cmd_state->keys_down, &event.key_press.key);
 	debug_log_cmd_state(*cmd_state);
 }
 

@@ -11,6 +11,7 @@ FetchContent_MakeAvailable(SDL3)
 
 add_library(ox-kernel STATIC event.c display.c)
 target_link_libraries(ox-kernel PUBLIC SDL3::SDL3)
+set_target_properties(ox-kernel PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 add_executable(ox ox.c)
 target_link_libraries(ox PRIVATE ox-kernel)

@@ -11,8 +11,8 @@
 #include "event.h"
 #include "display.h"
 
-static void quit_handler(ox_Event* event, void* user_data) {
-	if (event->type != OX_EVENT_QUIT) return;
+static void quit_handler(ox_Event event, void* user_data) {
+	if (event.type != OX_EVENT_QUIT) return;
 	Ox* ox = (Ox*)user_data;
 	ox->should_exit = true;
 }
@@ -49,14 +49,13 @@ int main() {
 	const ox_Api api = {
 		oxi_publish_event,
 		oxi_subscribe_events,
-		oxi_make_event,
+		ox_init_event,
 	};
 	
 	if(!setup_ox(&ox)) {
 		printf("Failed to setup ox");
 		return 1;
 	}
-	SDL_SetHint(SDL_HINT_EVENT_LOGGING, "1");
 
 	// TODO:4 move this to ox.modules.init()
 	Module modules = load_modules(&ox, &api);
@@ -64,17 +63,8 @@ int main() {
 		return -1;
 	}
 
-	printf("SDL Version: %s\n", SDL_GetRevision());
-	bool ok = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
-	SDL_SetHint(SDL_HINT_EVENT_LOGGING, "1");
-
-	if (!ok) {
-		SDL_Log("Failed to init SDL");
-		SDL_Quit();
-		unload_module(modules);
-		return -1;
-	}
-	SDL_Log("SDL initialized");
+	// printf("SDL Version: %s\n", SDL_GetRevision());
+	// SDL_SetHint(SDL_HINT_EVENT_LOGGING, "1");
 
 	// TODO:1 should this be ox_ not oxi_
 	oxi_subscribe_events(
@@ -91,8 +81,7 @@ int main() {
 		oxi_render_and_present(ox.display);
 	}
 
-	// TODO:1 make cleanup registry and call them all here
-	// nice
+	// TODO: make cleanup registry and call them all here
 	oxi_destroy_event_system(ox.event_system);
 	oxi_destroy_display(ox.display);
 	SDL_Quit();

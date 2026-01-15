@@ -1,7 +1,11 @@
 #ifndef BUNUELIB_H
 #define BUNUELIB_H
 
-// TODO:2 document usage and consider compare function
+// TODO:2 Consider renaming fixed set to capped set or capacity set
+///////// the set is not fixed but it does have a capped capacity
+///////// its pre allocated
+
+// TODO:1 document usage
 #define BUNUEL_FIXED_SET(prefix, T, capacity) \
 	typedef struct { T items[capacity]; int count; } T##Set; \
 	static inline bool prefix##_eq(T* a, T* b); \
@@ -17,8 +21,10 @@
 		int i = prefix##_index(set, &item); \
 		if (i >= 0) return &set->items[i]; \
 		if (set->count >= capacity) return NULL; \
-		set->items[set->count++] = item; \
-		return &set->items[set->count]; \
+		i = set->count; \
+		set->count += 1; \
+		set->items[i] = item; \
+		return &set->items[i]; \
 	} \
 	\
 	static inline bool prefix##_remove(T##Set* set, T* item) { \
@@ -35,6 +41,47 @@
 	\
 	static inline bool prefix##_eq(T* p, T* q)
 
-// TODO define a linked list
+// TODO define a capped linked list
+
+/*
+ * # Allocator backed data structures
+ *
+ * Like ring buffers, vectors, queues, stacks
+ * backed by various allocation strategies and
+ * locations like arenas, static, dynamic, heap,
+ * stack, mmap, bump
+ *
+ * ## Fundamental building blocks
+ *
+ * ### getting backing memory from the OS
+ *
+ * - mmap
+ * - static (BSS, data segment)
+ * - heap (malloc)
+ * - disk backed?!?
+ *
+ * ### Allocation/free strategies
+ *
+ * - Linear memory blocks (bump)
+ * - Buddy allocation
+ * - Alignment
+ * - Pools (homogenous type)
+ * - Bitmaps
+ * - Free/allocated lists
+ * - Circular indexing
+ * - arenas (resettable/freeable aggregates)
+ *
+ * ### Data structures on top
+ *
+ * - ring buffer
+ * - stack
+ * - queue
+ * - vector
+ * - list
+ * - string
+ * - map
+ * - graph
+ * - trees, tries
+ */
 
 #endif // BUNUELIB_H

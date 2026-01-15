@@ -15,7 +15,6 @@ uint64_t oxi_time_ns() {
 	return (uint64_t)ts.tv_sec * 1000000000LL + (uint64_t)ts.tv_nsec;
 }
 
-// TODO change other comments to oxi prefix
 // oxi_make_event_system returns a pointer to a newly initialized event system
 ox_EventSystem* oxi_make_event_system() {
 	ox_EventSystem* event_system = calloc(1, sizeof(ox_EventSystem));
@@ -27,35 +26,9 @@ bool oxi_destroy_event_system(ox_EventSystem* event_system) {
 	free(event_system);
 }
 
-// ox_make_zero_event initializes an event with the given type and a timestamp
-ox_Event* oxi_make_event(ox_EventSystem* event_system, ox_EventType type) {
-	ox_EventArena* event_arena = &event_system->event_arena;
-	ox_Event* event = NULL;
-	// First look for a processed event we can reuse
-	// offsets point at the highest unused slot
-	// these slots represent avaiable memory
-	if (event_arena->tombstone_offset > 0) {
-		event_arena->tombstone_offset -= 1;
-		event = &event_arena->events[event_arena->tombstone_offset];
-	}
-
-	// Otherwise grab the next available from the buffer
-	// EVENT_MAX is the size of the array, so EVENT_MAX-1 is the last available
-	// and again the offset points at the highest unused slot
-	// these slots represent unavailable memory
-	if (event_arena->offset < EVENT_MAX) {
-		event = &event_arena->events[event_arena->offset];
-		event_arena->offset += 1;
-	}
-
-	if (event == NULL) {
-		printf("ERROR: Max events"); 
-		return NULL;
-	}
-
+void ox_init_event(ox_Event* event, ox_EventType type) {
 	event->type = type;
 	event->common.timestamp = oxi_time_ns();
-	return event;
 }
 
 // NOTE operation to sync the h file from the c too
@@ -64,66 +37,33 @@ ox_Event* oxi_make_event(ox_EventSystem* event_system, ox_EventType type) {
 // NOTE operation to jump from error message to code
 // NOTE operation to pull notes into a central document
 
-// oxi_destroy_event frees the memory for an ox_Event*
-bool oxi_destroy_event(ox_EventSystem* event_system, ox_Event* event) {
-	ox_EventArena* event_arena = &event_system->event_arena;
-	// check for existing tombstones
-	for(int i = 0; i < EVENT_MAX; i++) {
-		if (event_arena->tombstones[i] == event) {
-			printf("WARN: Event(%p) already destroyed", event);
-			return 0;
-		}
-	}
-	
-	if (event_arena->tombstone_offset >= EVENT_MAX) {
-		printf("ERROR: Event tombstone max");
-		return 0;
-	}
-
-	event_arena->tombstones[event_arena->tombstone_offset] = event;
-	
-	return 1;
-}
-
-// oxi_from_sdl_key translates an SDL_Keycode to an ox_Key
-ox_Key oxi_from_sdl_key(SDL_Keycode sdl_key) {
-	switch(sdl_key) {
-		case SDLK_ESCAPE: return OX_KEY_ESCAPE;
-
-		case SDLK_A:      return OX_KEY_A;
-		case SDLK_B:      return OX_KEY_B;
-
-		case SDLK_Q:      return OX_KEY_Q;
-
-		default:          return OX_KEY_NULL;
-	}
-}
-
 // ox_from_sdl_event transform SDL_Event to an ox_Event
-ox_Event* oxi_from_sdl_event(ox_EventSystem* event_system, SDL_Event* sdl_event) {
-	if (sdl_event == NULL) {
-		printf("INFO: Trying to transform NULL SDL_Event*\n");
-		return NULL;
-	}
-	switch(sdl_event->type) {
+bool oxi_from_sdl_event(SDL_Event sdl_event, ox_Event* event) {
+	switch(sdl_event.type) {
 		case SDL_EVENT_WINDOW_EXPOSED:
-			return oxi_make_event(event_system, OX_EVENT_WINDOW_EXPOSED);
+			ox_init_event(event, OX_EVENT_WINDOW_EXPOSED);
+			break;
 
 		case SDL_EVENT_KEY_UP:
 		case SDL_EVENT_KEY_DOWN:
-			ox_Key key = oxi_from_sdl_key(sdl_event->key.key);
-			if (!key) return false;
-
-			ox_Event* event = oxi_make_event(event_system, sdl_event->type);
-			event->key_press.key = key;
-			return event;
+			ox_EventType type = sdl_event.type == SDL_EVENT_KEY_UP
+				                            ? OX_EVENT_KEY_UP
+							    : OX_EVENT_KEY_DOWN;
+			ox_init_event(event, type);
+			event->key_press.scancode = sdl_event.key.scancode;
+			event->key_press.key = sdl_event.key.key;
+			event->key_press.mod = sdl_event.key.mod;
+			event->key_press.repeat = sdl_event.key.repeat;
+			break;
 		
 		case SDL_EVENT_QUIT:
-			return oxi_make_event(event_system, OX_EVENT_QUIT);
+			ox_init_event(event, OX_EVENT_QUIT);
+			break;
 		
 		default:
 			return false;
 	}
+	return true;
 }
 
 // ox_from_sdl_event translates an ox_Event to an SDL_Event
@@ -143,14 +83,12 @@ bool oxi_to_sdl_event(ox_Event* ox_event, SDL_Event* sdl_event) {
 	}
 }
 
+// TODO:2 consider passing ox_event by value
 // ox_publish_event queues an event to be delivered to subscribers. Always destroys the ox_event
 bool oxi_publish_event(ox_EventSystem* event_system, ox_Event* ox_event) {
 	SDL_Event sdl_event;
 	SDL_zero(sdl_event);
 	bool could_translate = oxi_to_sdl_event(ox_event, &sdl_event);
-	if (!oxi_destroy_event(event_system, ox_event)) {
-		printf("WARN: Failed to destroy event. Likely memory leak");
-	}
 	if (!could_translate) {
 		printf("ERROR: Could not translate ox_Event.type(%d) to SDL_Event\n",
 		       ox_event->type);
@@ -161,8 +99,9 @@ bool oxi_publish_event(ox_EventSystem* event_system, ox_Event* ox_event) {
 
 // ox_dispatch_next waits until the next event is published then dispatches it to subscribers
 bool oxi_dispatch_next(ox_EventSystem* event_system) {
-	ox_Event* event = NULL;
-	while (event == NULL) {
+	ox_Event event;
+	bool got_event = false;
+	while (!got_event) {
 		// Try translating SDL events until we find one we can translate
 		SDL_Event sdl_event;
 		if (!SDL_WaitEvent(&sdl_event)) {
@@ -170,11 +109,10 @@ bool oxi_dispatch_next(ox_EventSystem* event_system) {
 			return false;
 		}
 
-		event = oxi_from_sdl_event(event_system, &sdl_event);
+		got_event = oxi_from_sdl_event(sdl_event, &event);
 	}
 
-	ox_Subscription* sub = event_system->topics[event->type];
-	printf("subscription %p\n", sub); // TODO: Why is this NULL?
+	ox_Subscription* sub = event_system->topics[event.type];
 	while(sub != NULL) {
 		if (sub->callback == NULL) {
 			// TODO register this error somewhere
@@ -186,10 +124,6 @@ bool oxi_dispatch_next(ox_EventSystem* event_system) {
 		sub = sub->next;
 	}
 
-	//TODO: Once we pass the event to all callbacks can we drop it?
-	/////// do we even need a pool of memory for events?
-	/////// they're either ephemeral or belong in an event store forever.
-
 	return true;
 }
 
@@ -198,7 +132,7 @@ bool oxi_dispatch_next(ox_EventSystem* event_system) {
 int oxi_subscribe_events(
 		ox_EventSystem* event_system,
 		ox_EventType type,
-		void (*callback)(ox_Event* event, void* user_data),
+		void (*callback)(ox_Event event, void* user_data),
 		void* user_data
 ) {
 	int id = rand();
@@ -209,7 +143,8 @@ int oxi_subscribe_events(
 			.user_data = user_data,
 			.next = event_system->topics[type],
 		};
-		event_system->topics[type] = ox_sub_add(&event_system->subscription_set, sub);
+		ox_Subscription* subbed = ox_sub_add(&event_system->subscription_set, sub);
+		event_system->topics[type] = subbed;
 	} else {
 		printf("ERROR: Max subscriptions");
 		return 0;

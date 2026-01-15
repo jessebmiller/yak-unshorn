@@ -17,17 +17,14 @@ ox_EventSystem* oxi_make_event_system();
 // oxi_destroy_event_system frees all allocations fo the event system
 bool oxi_destroy_event_system(ox_EventSystem* es);
 
-// oxi_make_event returns a zero initialized event of the given type
-ox_Event* oxi_make_event(ox_EventSystem* event_system, ox_EventType type);
+// ox_init_event initializes an event to the given type
+void ox_init_event(ox_Event* event, ox_EventType type);
 
 // oxi_destroy_event frees the memory for an ox_Event*
 bool oxi_destroy_event(ox_EventSystem* event_system, ox_Event* event);
 
 // oxi_from_sdl_event translates an SDL_Event to an ox_Event
-ox_Event* oxi_from_sdl_event(ox_EventSystem* event_system, SDL_Event* sdl_event);
-
-// oxi_from_sdl_key translates an SDL_Key to an ox_Key
-ox_Key oxi_from_sdl_key(SDL_Keycode sdl_key);
+bool oxi_from_sdl_event(SDL_Event sdl_event, ox_Event* event);
 
 // ox_from_sdl_event translates an ox_Event to an SDL_Event
 bool oxi_to_sdl_event(ox_Event* ox_event, SDL_Event* sdl_event);
@@ -42,7 +39,7 @@ bool oxi_dispatch_next(ox_EventSystem* event_system);
 int oxi_subscribe_events(
 	ox_EventSystem* event_system,
 	ox_EventType type,
-	void (*callback)(ox_Event* event, void* user_data),
+	void (*callback)(ox_Event event, void* user_data),
 	void* user_data
 );
 

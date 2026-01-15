@@ -2,6 +2,7 @@
 #define OX_EVENT_TYPES_H
 
 #include <stdint.h>
+#include <SDL3/SDL.h>
 #include "../bunuelib.h"
 
 typedef enum {
@@ -38,19 +39,14 @@ typedef struct {
 	uint64_t timestamp;		
 } ox_Quit;
 
-typedef enum {
-	OX_KEY_NULL,
-	OX_KEY_ESCAPE,
-	OX_KEY_A,
-	OX_KEY_B,
-	OX_KEY_Q,
-} ox_Key;
-
 typedef struct {
 	ox_EventType type;
 	uint32_t reserved;
 	uint64_t timestamp;
-	ox_Key key;
+	SDL_Scancode scancode;
+	SDL_Keycode key;
+	SDL_Keymod mod;
+	bool repeat;
 } ox_KeyPress;
 
 typedef union {
@@ -60,19 +56,9 @@ typedef union {
 	ox_Quit quit;			// OX_EVENT_QUIT
 } ox_Event;
 
-// TODO:8 events is overflowing because we don't remove them...
-#define EVENT_MAX 16
-typedef struct {
-	ox_Event events[EVENT_MAX];
-	size_t offset;
-	
-	ox_Event* tombstones[EVENT_MAX];
-	size_t tombstone_offset;
-} ox_EventArena;
-
 typedef struct ox_Subscription {
 	int id;
-	void (*callback)(ox_Event* event, void* user_data);
+	void (*callback)(ox_Event event, void* user_data);
 	void* user_data;
 	struct ox_Subscription* next;
 } ox_Subscription;
@@ -86,7 +72,6 @@ BUNUEL_FIXED_SET(ox_sub, ox_Subscription, SUB_MAX) {
 typedef struct {
 	ox_Subscription* topics[TOPICS_COUNT];
 	ox_SubscriptionSet subscription_set;
-	ox_EventArena event_arena;
 } ox_EventSystem;
 
 #endif
