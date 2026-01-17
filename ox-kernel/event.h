@@ -26,11 +26,11 @@ bool oxi_destroy_event(ox_EventSystem* event_system, ox_Event* event);
 // oxi_from_sdl_event translates an SDL_Event to an ox_Event
 bool oxi_from_sdl_event(SDL_Event sdl_event, ox_Event* event);
 
-// ox_from_sdl_event translates an ox_Event to an SDL_Event
+// oxi_from_sdl_event translates an ox_Event to an SDL_Event
 bool oxi_to_sdl_event(ox_Event* ox_event, SDL_Event* sdl_event);
 
-// ox_publish_event queues an event to be delivered to subscribers
-bool oxi_publish_event(ox_EventSystem* event_system, ox_Event* event);
+// oxi_publish_event queues an event to be delivered to subscribers
+bool oxi_publish_event(ox_Event* event);
 
 // ox_dispatch_next blocks until the next event is published and dispatches it to subscribers
 bool oxi_dispatch_next(ox_EventSystem* event_system);

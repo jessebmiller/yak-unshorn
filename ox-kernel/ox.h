@@ -6,8 +6,6 @@
 #include "display.h"
 #include <stdbool.h>
 
-// TODO Ox text buffer system (try it as a native module)
-// TODO Ox runtime system (make them modules that translate the api for a given language)
 
 typedef struct {
 	// TODO Ox display system
@@ -18,7 +16,7 @@ typedef struct {
 } Ox;
 
 typedef struct {
-	bool (*oxi_publish_event)(ox_EventSystem* es, ox_Event* event);
+	bool (*oxi_publish_event)(ox_Event* event);
 	int (*oxi_subscribe_events)(
 			ox_EventSystem* es,
 			ox_EventType type, 
@@ -31,7 +29,7 @@ static Ox* _ox = NULL;
 static const ox_Api* _api = NULL;
 
 static inline bool ox_publish_event(ox_Event* event) {
-	return _api->oxi_publish_event(_ox->event_system, event);
+	return _api->oxi_publish_event(event);
 }
 
 static inline bool ox_subscribe_events(

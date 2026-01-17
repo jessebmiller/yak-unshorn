@@ -37,9 +37,37 @@ void ox_init_event(ox_Event* event, ox_EventType type) {
 // NOTE operation to jump from error message to code
 // NOTE operation to pull notes into a central document
 
+int cmd_event_type_first = -1;
+int cmd_event_type_last = -1;
+
+static SDL_EventType get_cmd_event_type(ox_CommandCode code) {
+	if(cmd_event_type_first = -1) {
+		cmd_event_type_first = SDL_RegisterEvents(OX_CMD_SYSTEM_MAX);
+		cmd_event_type_last = cmd_event_type_last + OX_CMD_SYSTEM_MAX - 1;
+	}
+	return (SDL_EventType)(code + cmd_event_type_first);
+}
+
 // ox_from_sdl_event transform SDL_Event to an ox_Event
 bool oxi_from_sdl_event(SDL_Event sdl_event, ox_Event* event) {
+
+	// check for sdl user events used for commands
+	if(sdl_event.type >= cmd_event_type_first &&
+	   sdl_event.type <= cmd_event_type_last) {
+		ox_init_event(event, OX_EVENT_COMMAND);
+		event->common.timestamp = sdl_event.common.timestamp;
+		event->cmd.code = sdl_event.type - cmd_event_type_first;
+		event->cmd.data = sdl_event.user.data1;
+		event->cmd.context = sdl_event.user.data2;
+		return true;
+	}
+
 	switch(sdl_event.type) {
+		
+		case SDL_EVENT_QUIT:
+			ox_init_event(event, OX_EVENT_QUIT);
+			break;
+		
 		case SDL_EVENT_WINDOW_EXPOSED:
 			ox_init_event(event, OX_EVENT_WINDOW_EXPOSED);
 			break;
@@ -56,13 +84,11 @@ bool oxi_from_sdl_event(SDL_Event sdl_event, ox_Event* event) {
 			event->key_press.repeat = sdl_event.key.repeat;
 			break;
 		
-		case SDL_EVENT_QUIT:
-			ox_init_event(event, OX_EVENT_QUIT);
-			break;
-		
 		default:
 			return false;
 	}
+	
+	event->common.timestamp = sdl_event.common.timestamp;
 	return true;
 }
 
@@ -72,20 +98,29 @@ bool oxi_to_sdl_event(ox_Event* ox_event, SDL_Event* sdl_event) {
 		fprintf(stderr, "INFO: Trying to transform NULL ox_Event*");
 		return NULL;
 	}
+
+	sdl_event->common.timestamp = ox_event->common.timestamp;
+
 	switch(ox_event->type) {
+
 		case OX_EVENT_QUIT:
 			sdl_event->type = SDL_EVENT_QUIT;
-			sdl_event->quit.timestamp = ox_event->quit.timestamp;
 			return true;
+
+		case OX_EVENT_COMMAND:
+			sdl_event->type = get_cmd_event_type(ox_event->cmd.code);
+			sdl_event->user.code = ox_event->cmd.code;
+			sdl_event->user.data1 = ox_event->cmd.data;
+			sdl_event->user.data2 = ox_event->cmd.context;
+			return true;
+
 		default:
 			fprintf(stderr, "WARN: Unknown ox_Event type %d\n", ox_event->type);
 			return false;
 	}
 }
 
-// TODO:2 consider passing ox_event by value
-// ox_publish_event queues an event to be delivered to subscribers. Always destroys the ox_event
-bool oxi_publish_event(ox_EventSystem* event_system, ox_Event* ox_event) {
+bool oxi_publish_event(ox_Event* ox_event) {
 	SDL_Event sdl_event;
 	SDL_zero(sdl_event);
 	bool could_translate = oxi_to_sdl_event(ox_event, &sdl_event);

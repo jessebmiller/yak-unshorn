@@ -1,6 +1,8 @@
 #ifndef BUNUELIB_H
 #define BUNUELIB_H
 
+#define BUNUEL_LEN(array) (sizeof(array)/sizeof((array)[0]))
+
 // TODO:2 Consider renaming fixed set to capped set or capacity set
 ///////// the set is not fixed but it does have a capped capacity
 ///////// its pre allocated
@@ -83,5 +85,11 @@
  * - graph
  * - trees, tries
  */
+
+#ifdef BUNUEL_STRIP_PREFIX
+
+#define LEN(array) BUNUEL_LEN(array)
+
+#endif //BUNUEL_STRIP_PREFIX
 
 #endif // BUNUELIB_H
