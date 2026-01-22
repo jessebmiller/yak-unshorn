@@ -57,16 +57,15 @@ int main() {
 		return 1;
 	}
 
-	// TODO:4 move this to ox.modules.init()
-	Module modules = load_modules(&ox, &api);
-	if (modules.stop == NULL) {
+	int module_count = 0;
+	Module* modules = load_modules(&ox, &api, &module_count);
+	if (modules == NULL) {
 		return -1;
 	}
 
 	// printf("SDL Version: %s\n", SDL_GetRevision());
 	// SDL_SetHint(SDL_HINT_EVENT_LOGGING, "1");
 
-	// TODO:1 should this be ox_ not oxi_
 	oxi_subscribe_events(
 			ox.event_system,
 			OX_EVENT_QUIT,
@@ -85,5 +84,7 @@ int main() {
 	oxi_destroy_event_system(ox.event_system);
 	oxi_destroy_display(ox.display);
 	SDL_Quit();
-	return unload_module(modules);
+	int return_value = unload_modules(modules, module_count);
+	free(modules);
+	return return_value;
 }

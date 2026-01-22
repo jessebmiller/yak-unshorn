@@ -1,0 +1,3 @@
+runtime native
+lib ./build/runtime/janet/libjanet_runtime.so
+dlopen_flag RTLD_GLOBAL

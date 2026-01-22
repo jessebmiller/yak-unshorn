@@ -74,7 +74,6 @@
 
 #include "../../ox-kernel/ox.h"
 #include "../../bunuelib.h"
-#include "parsers.h"
 
 #define POLYPHONY 10
 
@@ -88,40 +87,7 @@ typedef struct {
 } cmd_Chord;
 
 typedef struct {
-	bool (*parse)(cmd_Chord, ox_Command* command, void* state);
-	void* state;
-} cmd_Parser
-
-
-typedef bool (*cmd_Parser)(cmd_Chord chord, ox_Command* command);
-
-#define CHORD_RING_SIZE 3
-int shibboleth = rand();
-typedef struct {
-	cmd_Chord chords[CHORD_RING_SIZE];
-	int next;
-	int shibboleth;
-} cmd_PriorityParseState;
-
-bool priority_parse(cmd_Chord chord, ox_Command* command, void* state) {
-	if(state->shibboleth != shibboleth) {
-		*state = {0};
-		state->shibboleth = shibboleth;
-	}
-
-	state->chords[state->next] = chord;
-	state->next = (state->next + 1) % CHORD_RING_SIZE;
-
-	cmd_Chord run[3];
-
-}
-
-#define MAX_PARSERS 5
-
-typedef struct {
 	SDL_KeycodeSet keys_down;
-	cmd_Parser* command_parsers[MAX_PARSERS];
-	int parser_count;
 } cmd_State;
 
 static cmd_State cmd_state = {0};
@@ -133,20 +99,6 @@ static void debug_log_cmd_state(cmd_State* state) {
 	}
 	printf(")\n");
 }
-
-static ox_Command parse_command(cmd_Parser* parsers, cmd_Chord chord) {
-	if (parsers == NULL) {
-		printf("ERROR: Cannot parse command, NULL parsers\n");
-		exit(-1);
-	}
-	ox_Command command = {0};
-	for (int i = 0; i < LEN(parsers); i++) {
-		if(parsers[i](chord, &command)) break;	
-	}
-	return command;
-}
-
-
 
 static void handle_key(ox_Event event, void* user_data) {
 	assert(event.type == OX_EVENT_KEY_DOWN
@@ -162,7 +114,9 @@ static void handle_key(ox_Event event, void* user_data) {
 	}
 
 	cmd_Chord chord = {cmd_state->keys_down, event.key_press};
-	ox_Command command = parse_command(*cmd_state->command_parsers, chord);
+
+	ox_Command = // parse command with command_parser module
+
 	ox_Event cmd_event;
 	ox_init_event(&cmd_event, OX_EVENT_COMMAND);
 	cmd_event.cmd = command;
