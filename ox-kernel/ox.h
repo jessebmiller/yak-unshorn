@@ -5,6 +5,7 @@
 #include "event.h"
 #include "display.h"
 #include <stdbool.h>
+#include <stdio.h>
 
 typedef struct {
 	// TODO Ox display system
@@ -36,6 +37,10 @@ static inline bool ox_subscribe_events(
 		void(*callback)(ox_Event event, void* user_data),
 		void* user_data) {
 	return _api->oxi_subscribe_events(_ox->event_system, type, callback, user_data);
+}
+
+static inline void ox_log(char* message) {
+	printf("OX_LOG: %s\n", message);
 }
 
 int ox_init(Ox* ox, const ox_Api* api);

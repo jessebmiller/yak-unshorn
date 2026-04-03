@@ -2,10 +2,13 @@
 #include <stdio.h>
 #include <dlfcn.h>
 #include <string.h>
+#include <errno.h>
+#include <string.h>
 
 #include "ox.h"
 
-#define MAX_LINE 256
+#define MAX_MODS 4
+#define MAX_LINE 1024
 #define MAX_VALUE 64
 
 // TODO move types to module.h
@@ -20,6 +23,7 @@ typedef struct {
 	void* ctx;
 	UnloadFunc unload; // self.unload(self.ctx)
 } Module;
+
 
 int unload_module(Module module) {
 	int stop_result = module.stop();
@@ -43,11 +47,21 @@ int unload_module(Module module) {
 	return 0;
 }
 
+int unload_modules(Module* modules, int module_count) {
+	int return_code = 0;
+	for (int i = 0; i < module_count; i++) {
+		if(unload_module(modules[i]) != 0) {
+			return_code = 1;
+		}
+	}
+	return return_code;
+}
+
 int unload_native_module(void* handle) {
 	return dlclose(handle);
 }
 
-Module start_native_module(char* lib_path) 
+Module start_native_module(char* lib_path, int dlopen_flags) 
 {
 	void* handle;
 	ModuleInit ox_init;
@@ -55,7 +69,7 @@ Module start_native_module(char* lib_path)
 	ModuleStop stop;
 	char* error;
 
-	handle = dlopen(lib_path, RTLD_NOW);
+	handle = dlopen(lib_path, dlopen_flags);
 	if (!handle) {
 		fprintf(stderr,
 			"Error loading mod %s: %s\n",
@@ -124,6 +138,7 @@ Module start_module(const char* mod_path)
 	char modfile_path[path_len];
 	snprintf(modfile_path, path_len, "%s/%s", mod_path, modfile);
 
+	printf("Opening oxmod at %s\n", modfile_path);
 	FILE* file = fopen(modfile_path, "r");
 	if (!file) {
 		perror("Failed to open modfile");
@@ -134,9 +149,7 @@ Module start_module(const char* mod_path)
 	char* runtime = NULL;
 	char* lib = NULL;
 	while(fgets(line, sizeof(line), file)) {
-		if (line[0] == '#' || line[0] == '\n') {
-			continue;
-		}
+		if (line[0] == '#' || line[0] == '\n') continue;
 
 		char value[MAX_VALUE];
 		if (sscanf(line, "runtime %s", value) == 1) {
@@ -152,7 +165,6 @@ Module start_module(const char* mod_path)
 		}
 	}
 
-	fclose(file);
 
 	if(!runtime || !lib) {
 		fprintf(stderr, "Missing required config values\n");
@@ -163,28 +175,57 @@ Module start_module(const char* mod_path)
 	
 	if (strcmp(runtime, "native") == 0) {
 		free(runtime);
-		Module module = start_native_module("./build/module/command/libcommand.so");
+		int dlopen_flags = RTLD_NOW;
+		while(fgets(line, sizeof(line), file)) {
+			if (line[0] == '#' || line[0] == '\n') continue;
+			char value[MAX_VALUE];
+			errno = 0;
+			if (sscanf(line, "dlopen_flag %s", value) == 1) {
+				if (strcmp(value, "RTLD_GLOBAL") == 0) {
+					dlopen_flags = dlopen_flags | RTLD_GLOBAL;
+				}
+			}
+		}
+		printf("%d %d %d %d\n", dlopen_flags, RTLD_NOW, RTLD_GLOBAL, RTLD_NOW | RTLD_GLOBAL);
+		Module module = start_native_module(lib, dlopen_flags);
 		free(lib);
 		return module;
 	}
 
 	fprintf(stderr, "Unknown runtime %s\n", runtime);
 
+	fclose(file);
 	free(runtime);
 	free(lib);
 	return (Module){0};
 }
 
-// TODO load all modules, not just ./module/init
 // TODO prefix all module functions with ox_
-Module load_modules(Ox* ox, const ox_Api* api) {
+Module* load_modules(Ox* ox, const ox_Api* api, int* mods_count) {
 	_ox = ox;
 	_api = api;
 	// read the config to find the init module
-	const char* OXINIT = getenv("YAK_UNSHORN_OXINIT");
-	if (OXINIT == NULL) {
-		OXINIT = "./module/init";
+	const char* load_list = getenv("YAK_UNSHORN_OXMOD_LOAD_LIST");
+	if (load_list == NULL) {
+		// TODO:1 make this relative to $HOME
+		load_list = "/home/jesse/.config/yak_unshorn/oxmod_load_list";
 	}
 
-	return start_module(OXINIT);
+	FILE* file = fopen(load_list, "r");
+	if (!file) {
+		perror("Could not open YAK_UNSHORN_LOAD_LIST");
+		return NULL;
+	}
+
+	Module* mods = calloc(MAX_MODS, sizeof(Module));
+	char line[MAX_LINE];
+	for(int i = 0; fgets(line, sizeof(line), file) != NULL && i < MAX_MODS; i++) {
+		if (line[0] == '#' || line[0] == '\n') continue;
+		line[strcspn(line, "\n")] = '\0';
+		printf("Loading module at %s\n", line);
+		mods[i] = start_module(line);
+		*mods_count = i + 1;
+	}
+
+	return mods;
 }

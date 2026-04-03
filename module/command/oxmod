@@ -1,0 +1,2 @@
+runtime native
+lib ./build/module/command/libcommand.so
