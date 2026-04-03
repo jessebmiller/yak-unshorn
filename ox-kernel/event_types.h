@@ -6,7 +6,7 @@
 #include "../bunuelib.h"
 
 typedef enum {
-	OX_EVENT_ZERO = 0,
+	OX_EVENT_NONE = 0,
 
 	OX_EVENT_WINDOW_EXPOSED,
 

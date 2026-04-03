@@ -6,7 +6,6 @@
 #include "display.h"
 #include <stdbool.h>
 
-
 typedef struct {
 	// TODO Ox display system
 	ox_EventSystem* event_system;

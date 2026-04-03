@@ -66,7 +66,7 @@
 // common commands like "undo", "save", "fuzzy finder" etc. can be built
 // in parser combinators and reused.
 
-#define BUNUEL_STRIP_PREFIX
+#define BUNUELIB_STRIP_PREFIX
 
 #include <assert.h>
 #include <stdio.h>
@@ -75,63 +75,44 @@
 #include "../../ox-kernel/ox.h"
 #include "../../bunuelib.h"
 #include "parsers.h"
+#include "command.h"
 
-#define POLYPHONY 10
+#define MAX_CHORDS 3
 
-BUNUEL_FIXED_SET(key_set, SDL_Keycode, POLYPHONY) {
-	return *p == *q;
+static cmd_Chord latest_chords[MAX_CHORDS] = {0};
+
+static void shift_chords(cmd_Chord chord) {
+	size_t len = MAX_CHORDS;
+	
+	// shift the array down 1 (dropping the 0th element)
+	memmove(&latest_chords[0], &latest_chords[1],
+		(MAX_CHORDS - 1) * sizeof(cmd_Chord));
+	
+	// set the last chord
+	latest_chords[MAX_CHORDS - 1] = chord;
 }
 
-typedef struct {
-	SDL_KeycodeSet held_keys;
-	ox_KeyPress key_press;
-} cmd_Chord;
-
-typedef struct {
-	bool (*parse)(cmd_Chord, ox_Command* command, void* state);
-	void* state;
-} cmd_Parser
-
-
-typedef bool (*cmd_Parser)(cmd_Chord chord, ox_Command* command);
-
-#define CHORD_RING_SIZE 3
-int shibboleth = rand();
-typedef struct {
-	cmd_Chord chords[CHORD_RING_SIZE];
-	int next;
-	int shibboleth;
-} cmd_PriorityParseState;
-
-bool priority_parse(cmd_Chord chord, ox_Command* command, void* state) {
-	if(state->shibboleth != shibboleth) {
-		*state = {0};
-		state->shibboleth = shibboleth;
+static ox_Command parse_quit() {
+	// quit is [+q/esc, +q/esc] (ignoring key ups)
+	if (latest_chords[0] == q_esc && latest_chords[1] == q_esc) {
+		
 	}
-
-	state->chords[state->next] = chord;
-	state->next = (state->next + 1) % CHORD_RING_SIZE;
-
-	cmd_Chord run[3];
-
 }
 
-#define MAX_PARSERS 5
-
-typedef struct {
-	SDL_KeycodeSet keys_down;
-	cmd_Parser* command_parsers[MAX_PARSERS];
-	int parser_count;
-} cmd_State;
-
-static cmd_State cmd_state = {0};
-
-static void debug_log_cmd_state(cmd_State* state) {
-	printf("cmd_State.keys_down(");
-	for (int i = 0; i < state->keys_down.count; i++) {
-		printf("[%d]", state->keys_down.items[i]);
+static ox_Command parse_priority_commands(cmd_Chord chord) {
+	assert(chord.key_press.type == OX_EVENT_KEY_DOWN
+	    || chord.key_press.type == OX_EVENT_KEY_UP);
+	if (chord.key_press.type != OX_EVENT_KEY_DOWN
+	 && chord.key_press.type != OX_EVENT_KEY_UP) {
+		return ox_Command {0};
 	}
-	printf(")\n");
+
+	shift_chords(chord);
+
+	ox_Command cmd = parse_quit();
+	if (cmd.type != OX_COMMAND_NONE) return cmd;
+
+	return parse_default_mode();
 }
 
 static ox_Command parse_command(cmd_Parser* parsers, cmd_Chord chord) {
@@ -139,14 +120,13 @@ static ox_Command parse_command(cmd_Parser* parsers, cmd_Chord chord) {
 		printf("ERROR: Cannot parse command, NULL parsers\n");
 		exit(-1);
 	}
-	ox_Command command = {0};
+	ox_Command command;
 	for (int i = 0; i < LEN(parsers); i++) {
-		if(parsers[i](chord, &command)) break;	
+		command = parsers[i]->parse(chord, parsers[i]->state);
+		if (command.type != OX_COMMAND_NONE) break;
 	}
 	return command;
 }
-
-
 
 static void handle_key(ox_Event event, void* user_data) {
 	assert(event.type == OX_EVENT_KEY_DOWN
@@ -163,10 +143,12 @@ static void handle_key(ox_Event event, void* user_data) {
 
 	cmd_Chord chord = {cmd_state->keys_down, event.key_press};
 	ox_Command command = parse_command(*cmd_state->command_parsers, chord);
-	ox_Event cmd_event;
-	ox_init_event(&cmd_event, OX_EVENT_COMMAND);
-	cmd_event.cmd = command;
-	ox_publish_event(&cmd_event);
+	if(command.type != OX_CMD_NONE) {
+		ox_Event cmd_event;
+		ox_init_event(&cmd_event, OX_EVENT_COMMAND);
+		cmd_event.cmd = command;
+		ox_publish_event(&cmd_event);
+	}
 
 	event.type == OX_EVENT_KEY_UP
 		? (void*)key_set_remove(&cmd_state->keys_down, &event.key_press.key)
@@ -180,7 +162,7 @@ OX_INIT(command) {
 	return 0;
 }
 
-// TODO:1 should we to prefixspace init, start, and stop in modules?
+// TODO:1 should we to prefix/namespace init, start, and stop in modules?
 int start() {
 	printf("Starting command module\n");
 	return 0;
